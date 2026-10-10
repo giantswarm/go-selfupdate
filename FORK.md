@@ -27,37 +27,48 @@ A carried patch lands by rebase merge: one upstream-ready commit, author and mes
 upstream's plus the patches and the patch is ready to go upstream as it is. The protected branch is never force-pushed.
 
 A pull request from `fork/v<version>` against `giantswarm` moves the pin: it merges the upstream tag into the line
-(`git merge --no-ff v<version>`), resolving conflicts so the carried patches stay in effect on the new upstream code and
-the fork's own files stay as the line has them; upstream's tests and `go vet ./...` pass before it opens. It lands with
-a merge commit, so the new upstream tag is an ancestor of the line and `git describe`, like the pseudo-version
-consumers pin, counts from it.
+(`git merge --no-ff v<version>`), resolving conflicts so the carried patches stay in effect on the new upstream code,
+every import keeps this line's module path and the fork's own files stay as the line has them; upstream's tests and
+`go vet ./...` pass before it opens. It lands with a merge commit, so the new upstream tag is an ancestor of the line.
+
+## Module path
+
+The line's module path is `github.com/giantswarm/go-selfupdate`: the `module` line in `go.mod` and every internal
+import name it. This is the one Giant Swarm-specific commit on the line (`chore: module path github.com/giantswarm/go-selfupdate`),
+never offered upstream. The upstream pull request of a carried patch stays what it was opened from: the patch commit
+alone, on upstream's module path; a change to it is cherry-picked onto upstream `main` and pushed there, never taken
+from the line with the module path commit.
 
 ## Consumers
 
-A consumer takes the line through a `replace` directive, keeping upstream's module path and release in its `require`,
-pinned to a commit of `giantswarm` by its pseudo-version (`go list -m github.com/giantswarm/go-selfupdate@<commit>`
-prints it):
+A consumer imports this path directly, in place of upstream's, with no `replace`:
 
-```
-replace github.com/creativeprojects/go-selfupdate v1.6.0 => github.com/giantswarm/go-selfupdate v1.6.1-0.<date>-<commit>
+```go
+import selfupdate "github.com/giantswarm/go-selfupdate"
 ```
 
-The module path in `go.mod` stays `github.com/creativeprojects/go-selfupdate`, so the line is only usable through
-`replace`, and a library that takes it (selfupdate-cosign) cannot pass it on: each CLI carries the same line in its own
-`go.mod`. The `replace` names the upstream version on its left, so a Renovate bump of go-selfupdate in a consumer
-leaves the line, and the consumer's `govulncheck` shows whether upstream carries the patch. The `replace` goes away,
-and this line retires, at the first upstream release that contains every carried patch; upstream plans the openpgp
-change for a v2, whose module path (`…/go-selfupdate/v2`) the consumers then import.
+```
+require github.com/giantswarm/go-selfupdate v1.6.1
+```
+
+A `replace` never reaches `go install <module>@<version>` users, which ignores every `replace` of the installed
+module, and a library cannot pass one on to its importers. With the line under its own path, a library that imports it
+(selfupdate-cosign) carries it to every CLI transitively: the CLI's graph contains the line, and upstream's module only
+if something else requires it. The import goes back to upstream's path (then its v2, `…/go-selfupdate/v2`, where
+upstream plans the openpgp change) at the first upstream release that contains every carried patch, and this line
+retires.
 
 ## Releases
 
-None. A Go module needs no build or publish step, and a pseudo-version names exactly the commit of the protected
-`giantswarm` branch a consumer runs, so the line cuts no tags of its own (an own tag would sit in upstream's `v1`
-version space, since a module's major is part of its import path). Upstream tags on the line are upstream's, kept for
-`git describe`.
+The line cuts its own semver tags on `giantswarm`, in its own module path's version space, continuing upstream's
+numbers from the pin: the first is **v1.6.1** on upstream v1.6.0, then a patch release per change of the line, and
+the minor or major of the upstream release a pin move takes. A tag is pushed on the merged commit of `giantswarm` once
+its Build workflow is green; a Go module needs no build or publish step, so the Go proxy serves the tag as it is.
+Upstream's tags on the line (v1.6.0 and older) name upstream's module path and are not consumable from this one.
 
 ## Carried patches
 
 | Patch | Why the CLIs need it | Upstream | State |
 |---|---|---|---|
 | `fix: replace unmaintained golang.org/x/crypto/openpgp with ProtonMail fork` | `validate.go` imports `golang.org/x/crypto/openpgp` unconditionally for `PGPValidator`, so every CLI that embeds the module reaches it (`selfupdate.init` → `openpgp.init`) and `govulncheck` reports GO-2026-5932 (unmaintained, unsafe by design, no fixed version) in each of them, although none verifies a PGP signature: they verify cosign bundles. The patch switches to `github.com/ProtonMail/go-crypto/openpgp`, the maintained drop-in fork the advisory recommends, with `cloudflare/circl` at v1.6.3. | [creativeprojects/go-selfupdate#58](https://github.com/creativeprojects/go-selfupdate/pull/58), open since 2026-07-24; the maintainer holds it for a v2 ([#57](https://github.com/creativeprojects/go-selfupdate/issues/57)) | carried, [giantswarm/go-selfupdate#1](https://github.com/giantswarm/go-selfupdate/pull/1) |
+| `chore: module path github.com/giantswarm/go-selfupdate` | Lets consumers import the line directly, so a library passes it on and `go install` users get it (a `replace` reaches neither). | never: Giant Swarm-specific | carried, see [Module path](#module-path) |

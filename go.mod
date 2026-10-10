@@ -1,4 +1,4 @@
-module github.com/creativeprojects/go-selfupdate
+module github.com/giantswarm/go-selfupdate
 
 go 1.25.12
 
