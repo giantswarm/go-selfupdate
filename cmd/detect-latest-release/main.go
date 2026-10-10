@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/creativeprojects/go-selfupdate"
-	"github.com/creativeprojects/go-selfupdate/cmd"
+	"github.com/giantswarm/go-selfupdate"
+	"github.com/giantswarm/go-selfupdate/cmd"
 )
 
 const (

@@ -3,7 +3,7 @@ Download and install the latest release of any binary from GitHub.
 ## Installation
 
 ```
-$ go get -u github.com/creativeprojects/go-selfupdate/cmd/get-release
+$ go install github.com/giantswarm/go-selfupdate/cmd/get-release@latest
 ```
 
 ## Usage
