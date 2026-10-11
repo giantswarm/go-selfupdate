@@ -1,5 +1,0 @@
-# GO-2026-5932: golang.org/x/crypto/openpgp is unmaintained and unsafe by design, no fixed version exists.
-# The line imports the ProtonMail fork in its place (FORK.md, carried patches); golang.org/x/crypto stays
-# in the module graph through other dependencies, so the module-level finding remains.
-# Tracked in https://github.com/giantswarm/go-selfupdate/issues/8; remove by 2026-12-10.
-GO-2026-5932 until=2026-12-10 # golang.org/x/crypto@v0.53.0

@@ -1,6 +1,6 @@
 # The Giant Swarm line's own pipeline (FORK.md, "CI"): the architect orb's
 # stock go-test job -- `go test ./...`, gosec and nancy, the dependency
-# vulnerability scan reading .nancy-ignore -- on every branch and tag.
+# vulnerability scan -- on every branch and tag.
 # Hand-written: the line's declaration in giantswarm/github generates no CI
 # (gen.ci.generate: false). Upstream's build.yml keeps running beside it.
 version: 2.1

@@ -13,7 +13,7 @@ the line's own issues live in this repository.
 
 | Branch | What it is |
 |---|---|
-| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, `.circleci/config.yml`, `.nancy-ignore`, the generated `zz_generated.*` workflows, and upstream's `build.yml` running on this branch too). Every change is a pull request against it: a carried patch by rebase merge (below), the fork's own files by squash merge. |
+| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, `.circleci/config.yml`, the generated `zz_generated.*` workflows, and upstream's `build.yml` running on this branch too). Every change is a pull request against it: a carried patch by rebase merge (below), the fork's own files by squash merge. |
 | `main` | upstream `main` at the time of the fork; not consumed, not synced. |
 | `fork/<topic>` | pull-request branches against `giantswarm` |
 
@@ -51,12 +51,17 @@ version wherever upstream has formatted them.
 The line's own pipeline is the hand-written `.circleci/config.yml`: the architect orb's stock `go-test` job
 (`go test ./...`, gosec, and nancy, the dependency vulnerability scan) on every branch and tag, next to upstream's
 `build.yml`. It is Giant Swarm CI only, never offered upstream, and never generated: the line's entry in
-giantswarm/github declares `gen.ci.generate: false`, so the file is edited here directly. A finding nancy cannot fix
-(no fixed version, or the fix is upstream's to take) is a time-boxed `.nancy-ignore` entry, `<id> until=<date>` with
-its tracking issue in the comment, removed when the issue closes or the date passes; the scan is never bypassed.
-The first entry is GO-2026-5932 ([#8](https://github.com/giantswarm/go-selfupdate/issues/8)): the carried patch
-takes `golang.org/x/crypto/openpgp` out of the line's imports, while `golang.org/x/crypto` stays in the module graph
-through other dependencies, where a module-level scan still sees it.
+giantswarm/github declares `gen.ci.generate: false`, so the file is edited here directly.
+
+nancy audits the modules of the built packages against OSS Index, by CVE id and module version. A finding with a
+fixed version is a bump of that module in `go.mod` on the line, by hand (Renovate stays off, `renovate.json5`), a
+`fix:` pull request of the fork's own; the next pin move keeps the higher version, so the bump never conflicts with
+upstream for long. A finding without a fix is a time-boxed `.nancy-ignore` entry, `<id> until=<date> # <module>@<version>`
+with its tracking issue in a comment line, removed when the issue closes or the date passes; the scan is never
+bypassed, and no entry outlives its finding. GO-2026-5932 (`golang.org/x/crypto/openpgp`, unmaintained) is no entry:
+the carried patch took the package out of the line's imports, and nancy knows no such id. The line's x/crypto is
+v0.58.0 (CVE-2026-56855, CVE-2026-78662 in `x/crypto/ssh`, fixed in v0.56.0), whose `go` directive sets the
+module's to 1.26.0: the Go a consumer of the line needs from the release carrying it on.
 
 ## Consumers
 
