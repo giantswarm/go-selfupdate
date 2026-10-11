@@ -6,13 +6,14 @@ the library every Giant Swarm command-line tool installs its releases with, behi
 need before upstream releases it, and answers one question from one place: **which go-selfupdate do the CLIs run, and
 why does it differ from upstream?**
 
-Tracking (this fork has issues disabled): [giantswarm/selfupdate-cosign#17](https://github.com/giantswarm/selfupdate-cosign/issues/17).
+Tracking: [giantswarm/selfupdate-cosign#17](https://github.com/giantswarm/selfupdate-cosign/issues/17) for the CLIs' side;
+the line's own issues live in this repository.
 
 ## Branches
 
 | Branch | What it is |
 |---|---|
-| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, and upstream's `build.yml` running on this branch too). Every change is a pull request against it. |
+| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, `.circleci/config.yml`, `.nancy-ignore`, the generated `zz_generated.*` workflows, and upstream's `build.yml` running on this branch too). Every change is a pull request against it: a carried patch by rebase merge (below), the fork's own files by squash merge. |
 | `main` | upstream `main` at the time of the fork; not consumed, not synced. |
 | `fork/<topic>` | pull-request branches against `giantswarm` |
 
@@ -37,7 +38,22 @@ The line's module path is `github.com/giantswarm/go-selfupdate`: the `module` li
 import name it. This is the one Giant Swarm-specific commit on the line (`chore: module path github.com/giantswarm/go-selfupdate`),
 never offered upstream. The upstream pull request of a carried patch stays what it was opened from: the patch commit
 alone, on upstream's module path; a change to it is cherry-picked onto upstream `main` and pushed there, never taken
-from the line with the module path commit.
+from the line with the module path commit. The line's pipeline (below) checks imports with `goimports -local
+github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own; the files
+where upstream groups them with third-party imports (`update.go`, `internal/path_test.go`) are regrouped on the line, in
+the import lines the module path commit rewrites anyway.
+
+## CI
+
+The line's own pipeline is the hand-written `.circleci/config.yml`: the architect orb's stock `go-test` job
+(`go test ./...`, gosec, and nancy, the dependency vulnerability scan) on every branch and tag, next to upstream's
+`build.yml`. It is Giant Swarm CI only, never offered upstream, and never generated: the line's entry in
+giantswarm/github declares `gen.ci.generate: false`, so the file is edited here directly. A finding nancy cannot fix
+(no fixed version, or the fix is upstream's to take) is a time-boxed `.nancy-ignore` entry, `<id> until=<date>` with
+its tracking issue in the comment, removed when the issue closes or the date passes; the scan is never bypassed.
+The first entry is GO-2026-5932 ([#8](https://github.com/giantswarm/go-selfupdate/issues/8)): the carried patch
+takes `golang.org/x/crypto/openpgp` out of the line's imports, while `golang.org/x/crypto` stays in the module graph
+through other dependencies, where a module-level scan still sees it.
 
 ## Consumers
 

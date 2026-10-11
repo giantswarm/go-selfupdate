@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+
 	"github.com/giantswarm/go-selfupdate/internal"
 	"github.com/giantswarm/go-selfupdate/update"
 )

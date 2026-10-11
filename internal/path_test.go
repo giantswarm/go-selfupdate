@@ -3,8 +3,9 @@ package internal_test
 import (
 	"testing"
 
-	"github.com/giantswarm/go-selfupdate/internal"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/giantswarm/go-selfupdate/internal"
 )
 
 func TestGetExecutablePath(t *testing.T) {
