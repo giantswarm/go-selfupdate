@@ -38,10 +38,13 @@ The line's module path is `github.com/giantswarm/go-selfupdate`: the `module` li
 import name it. This is the one Giant Swarm-specific commit on the line (`chore: module path github.com/giantswarm/go-selfupdate`),
 never offered upstream. The upstream pull request of a carried patch stays what it was opened from: the patch commit
 alone, on upstream's module path; a change to it is cherry-picked onto upstream `main` and pushed there, never taken
-from the line with the module path commit. The line's pipeline (below) checks imports with `goimports -local
-github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own; the files
-where upstream groups them with third-party imports (`update.go`, `internal/path_test.go`) are regrouped on the line, in
-the import lines the module path commit rewrites anyway.
+from the line with the module path commit. The line's pipeline (below) checks the tree with `goimports -local
+github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own and every
+file in gofmt's form. The line therefore carries, as Giant Swarm-only formatting: the regrouped imports of `update.go`
+and `internal/path_test.go` (in the lines the module path commit rewrites anyway), gofmt's doc-comment form of
+`doc.go` and `update/doc.go`, and the sorted imports of `mockdata_test.go` and `validate_test.go` (the carried
+openpgp patch's files). The last two are gofmt's output and upstream's to take as they are; a re-pin keeps upstream's
+version wherever upstream has formatted them.
 
 ## CI
 
