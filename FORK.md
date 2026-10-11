@@ -62,8 +62,14 @@ retires.
 
 The line cuts its own semver tags on `giantswarm`, in its own module path's version space, continuing upstream's
 numbers from the pin: the first is **v1.6.1** on upstream v1.6.0, then a patch release per change of the line, and
-the minor or major of the upstream release a pin move takes. A tag is pushed on the merged commit of `giantswarm` once
-its Build workflow is green; a Go module needs no build or publish step, so the Go proxy serves the tag as it is.
+the minor or major of the upstream release a pin move takes. A tag is cut by the Auto Release workflow
+(`.github/workflows/zz_generated.auto_release.yaml` and `cliff.toml`, generated from the line's entry in
+giantswarm/github) from the conventional subject of the commit merged into `giantswarm`: every releasable merge becomes
+the next release candidate `vX.Y.Z-rc.N` and a pre-release on GitHub, and the stable `vX.Y.Z` is that workflow run by
+hand with `release-type: stable`, which tags the latest candidate's commit. A pin move keeps the rule above: its merge commit's subject names the bump (`feat:` for an upstream minor, a
+breaking marker for an upstream major, `fix:` otherwise), so the tag follows the number of upstream's release.
+A Go module needs no build or publish step, so the Go proxy serves
+the stable tag as it is (a release candidate resolves only when a consumer asks for it by version).
 Upstream's tags on the line (v1.6.0 and older) name upstream's module path and are not consumable from this one.
 
 ## Carried patches
