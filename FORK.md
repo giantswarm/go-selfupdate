@@ -6,13 +6,14 @@ the library every Giant Swarm command-line tool installs its releases with, behi
 need before upstream releases it, and answers one question from one place: **which go-selfupdate do the CLIs run, and
 why does it differ from upstream?**
 
-Tracking (this fork has issues disabled): [giantswarm/selfupdate-cosign#17](https://github.com/giantswarm/selfupdate-cosign/issues/17).
+Tracking: [giantswarm/selfupdate-cosign#17](https://github.com/giantswarm/selfupdate-cosign/issues/17) for the CLIs' side;
+the line's own issues live in this repository.
 
 ## Branches
 
 | Branch | What it is |
 |---|---|
-| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, and upstream's `build.yml` running on this branch too). Every change is a pull request against it. |
+| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, `.circleci/config.yml`, the generated `zz_generated.*` workflows, and upstream's `build.yml` running on this branch too). Every change is a pull request against it: a carried patch by rebase merge (below), the fork's own files by squash merge. |
 | `main` | upstream `main` at the time of the fork; not consumed, not synced. |
 | `fork/<topic>` | pull-request branches against `giantswarm` |
 
@@ -37,7 +38,32 @@ The line's module path is `github.com/giantswarm/go-selfupdate`: the `module` li
 import name it. This is the one Giant Swarm-specific commit on the line (`chore: module path github.com/giantswarm/go-selfupdate`),
 never offered upstream. The upstream pull request of a carried patch stays what it was opened from: the patch commit
 alone, on upstream's module path; a change to it is cherry-picked onto upstream `main` and pushed there, never taken
-from the line with the module path commit.
+from the line with the module path commit. The line's pipeline (below) checks the tree with `goimports -local
+github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own and every
+file in gofmt's form. The line therefore carries, as Giant Swarm-only formatting: the regrouped imports of `update.go`
+and `internal/path_test.go` (in the lines the module path commit rewrites anyway), gofmt's doc-comment form of
+`doc.go` and `update/doc.go`, and the sorted imports of `mockdata_test.go` and `validate_test.go` (the carried
+openpgp patch's files). The last two are gofmt's output and upstream's to take as they are; a re-pin keeps upstream's
+version wherever upstream has formatted them.
+
+## CI
+
+The line's own pipeline is the hand-written `.circleci/config.yml`: the architect orb's stock `go-test` job
+(`go test ./...`, gosec, and nancy, the dependency vulnerability scan) on every branch and tag, next to upstream's
+`build.yml`, whose Go matrix the line keeps at the Go its `go` directive names (`GOTOOLCHAIN=local` there refuses an
+older one, and upstream's pinned golangci-lint cannot read a newer one's export data), while the orb's job runs the
+architect image's current Go. It is Giant Swarm CI only, never offered upstream, and never generated: the line's entry in
+giantswarm/github declares `gen.ci.generate: false`, so the file is edited here directly.
+
+nancy audits the modules of the built packages against OSS Index, by CVE id and module version. A finding with a
+fixed version is a bump of that module in `go.mod` on the line, by hand (Renovate stays off, `renovate.json5`), a
+`fix:` pull request of the fork's own; the next pin move keeps the higher version, so the bump never conflicts with
+upstream for long. A finding without a fix is a time-boxed `.nancy-ignore` entry, `<id> until=<date> # <module>@<version>`
+with its tracking issue in a comment line, removed when the issue closes or the date passes; the scan is never
+bypassed, and no entry outlives its finding. GO-2026-5932 (`golang.org/x/crypto/openpgp`, unmaintained) is no entry:
+the carried patch took the package out of the line's imports, and nancy knows no such id. The line's x/crypto is
+v0.58.0 (CVE-2026-56855, CVE-2026-78662 in `x/crypto/ssh`, fixed in v0.56.0), whose `go` directive sets the
+module's to 1.26.0: the Go a consumer of the line needs from the release carrying it on.
 
 ## Consumers
 
