@@ -50,8 +50,9 @@ version wherever upstream has formatted them.
 
 The line's own pipeline is the hand-written `.circleci/config.yml`: the architect orb's stock `go-test` job
 (`go test ./...`, gosec, and nancy, the dependency vulnerability scan) on every branch and tag, next to upstream's
-`build.yml`, whose Go matrix the line keeps at the versions its `go` directive allows (`GOTOOLCHAIN=local` there
-refuses an older one). It is Giant Swarm CI only, never offered upstream, and never generated: the line's entry in
+`build.yml`, whose Go matrix the line keeps at the Go its `go` directive names (`GOTOOLCHAIN=local` there refuses an
+older one, and upstream's pinned golangci-lint cannot read a newer one's export data), while the orb's job runs the
+architect image's current Go. It is Giant Swarm CI only, never offered upstream, and never generated: the line's entry in
 giantswarm/github declares `gen.ci.generate: false`, so the file is edited here directly.
 
 nancy audits the modules of the built packages against OSS Index, by CVE id and module version. A finding with a
