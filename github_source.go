@@ -63,7 +63,11 @@ func NewGitHubSource(config GitHubConfig) (*GitHubSource, error) {
 	}, nil
 }
 
-// ListReleases returns all available releases
+// ListReleases returns all available releases.
+// The latest release (drafts and pre-releases excluded by GitHub) is asked for on its own
+// and added when the list lacks it:
+// GitHub intermittently answers the release list with 200 and no releases at all,
+// while the latest release is answered reliably.
 func (s *GitHubSource) ListReleases(ctx context.Context, repository Repository) ([]SourceRelease, error) {
 	owner, repo, err := repository.GetSlug()
 	if err != nil {
@@ -79,11 +83,30 @@ func (s *GitHubSource) ListReleases(ctx context.Context, repository Repository) 
 		log.Printf("API returned an error response: %s", err)
 		return nil, err
 	}
-	releases := make([]SourceRelease, len(rels))
-	for i, rel := range rels {
-		releases[i] = NewGitHubRelease(rel)
+	releases := make([]SourceRelease, 0, len(rels)+1)
+	for _, rel := range rels {
+		releases = append(releases, NewGitHubRelease(rel))
 	}
-	return releases, nil
+
+	latest, res, err := s.api.Repositories.GetLatestRelease(ctx, owner, repo)
+	switch {
+	case res != nil && res.StatusCode == http.StatusNotFound:
+		// no release yet
+		return releases, nil
+	case err != nil && len(releases) == 0:
+		log.Printf("API returned an error response: %s", err)
+		return nil, err
+	case err != nil:
+		// the listed releases are enough
+		log.Printf("Cannot get the latest release: %s", err)
+		return releases, nil
+	}
+	for _, rel := range releases {
+		if rel.GetID() == latest.GetID() {
+			return releases, nil
+		}
+	}
+	return append(releases, NewGitHubRelease(latest)), nil
 }
 
 // DownloadReleaseAsset downloads an asset from a release.
