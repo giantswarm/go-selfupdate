@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v86/github"
 )
@@ -24,6 +25,14 @@ type GitHubConfig struct {
 	// Deprecated: Context option is no longer used
 	Context context.Context
 }
+
+// GitHub intermittently answers the release list with 200 and no releases at all:
+// an empty list is asked for again this many times, waiting githubListRetryDelay
+// times the attempt in between.
+var (
+	githubListRetries    = 2
+	githubListRetryDelay = 500 * time.Millisecond
+)
 
 // GitHubSource is used to load release information from GitHub
 type GitHubSource struct {
@@ -63,13 +72,26 @@ func NewGitHubSource(config GitHubConfig) (*GitHubSource, error) {
 	}, nil
 }
 
-// ListReleases returns all available releases
+// ListReleases returns all available releases.
+// GitHub intermittently answers the release list with 200 and no releases at all:
+// an empty list is asked for again, and the latest release (drafts and pre-releases
+// excluded by GitHub), which is answered reliably, is asked for on its own and added
+// when the list lacks it.
 func (s *GitHubSource) ListReleases(ctx context.Context, repository Repository) ([]SourceRelease, error) {
 	owner, repo, err := repository.GetSlug()
 	if err != nil {
 		return nil, err
 	}
 	rels, res, err := s.api.Repositories.ListReleases(ctx, owner, repo, nil)
+	for retry := 1; err == nil && len(rels) == 0 && retry <= githubListRetries; retry++ {
+		log.Printf("GitHub listed no release, asking again (%d/%d)", retry, githubListRetries)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(retry) * githubListRetryDelay):
+		}
+		rels, res, err = s.api.Repositories.ListReleases(ctx, owner, repo, nil)
+	}
 	if err != nil {
 		if res != nil && res.StatusCode == http.StatusNotFound {
 			// repository not found or release not found. It's not an error here.
@@ -79,11 +101,30 @@ func (s *GitHubSource) ListReleases(ctx context.Context, repository Repository) 
 		log.Printf("API returned an error response: %s", err)
 		return nil, err
 	}
-	releases := make([]SourceRelease, len(rels))
-	for i, rel := range rels {
-		releases[i] = NewGitHubRelease(rel)
+	releases := make([]SourceRelease, 0, len(rels)+1)
+	for _, rel := range rels {
+		releases = append(releases, NewGitHubRelease(rel))
 	}
-	return releases, nil
+
+	latest, res, err := s.api.Repositories.GetLatestRelease(ctx, owner, repo)
+	switch {
+	case res != nil && res.StatusCode == http.StatusNotFound:
+		// no release yet
+		return releases, nil
+	case err != nil && len(releases) == 0:
+		log.Printf("API returned an error response: %s", err)
+		return nil, err
+	case err != nil:
+		// the listed releases are enough
+		log.Printf("Cannot get the latest release: %s", err)
+		return releases, nil
+	}
+	for _, rel := range releases {
+		if rel.GetID() == latest.GetID() {
+			return releases, nil
+		}
+	}
+	return append(releases, NewGitHubRelease(latest)), nil
 }
 
 // DownloadReleaseAsset downloads an asset from a release.
