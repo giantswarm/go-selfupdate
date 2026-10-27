@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, giantswarm ]
 
+permissions:
+  contents: read
+
 jobs:
 
   build:
@@ -13,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go_version: ['1.26']
+        go_version: ['1.26', '1.27']
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
@@ -38,7 +41,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.12.2
+          version: v2.15.0
           args: --timeout=30m
 
       - name: Test

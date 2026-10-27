@@ -19,7 +19,7 @@ the line's own issues live in this repository.
 
 ## Pin
 
-Upstream **v1.6.0** (`27a5f170`, 2026-07-08). The line moves to the next upstream release the CLIs take, with every
+Upstream **v1.7.0** (`caf24d23`). The line moves to the next upstream release the CLIs take, with every
 carried patch kept in effect on it or dropped once upstream contains it.
 
 ## Changing the line
@@ -44,17 +44,16 @@ upstream repository. The line's pipeline (below) checks the tree with `goimports
 github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own and every
 file in gofmt's form. The line therefore carries, as Giant Swarm-only formatting: the regrouped imports of `update.go`
 and `internal/path_test.go` (in the lines the module path commit rewrites anyway), gofmt's doc-comment form of
-`doc.go` and `update/doc.go`, and the sorted imports of `mockdata_test.go` and `validate_test.go` (the carried
-openpgp patch's files). The last two are gofmt's output and upstream's to take as they are; a re-pin keeps upstream's
+`doc.go` and `update/doc.go`, and the sorted imports of `mockdata_test.go` and `validate_test.go` (upstream's
+openpgp change, creativeprojects/go-selfupdate#58, left them unsorted). The doc comments and the sorted imports are gofmt's output, offered upstream as [creativeprojects/go-selfupdate#62](https://github.com/creativeprojects/go-selfupdate/pull/62) from branch `upstream/gofmt`; a re-pin keeps upstream's
 version wherever upstream has formatted them.
 
 ## CI
 
 The line's own pipeline is the hand-written `.circleci/config.yml`: the architect orb's stock `go-test` job
 (`go test ./...`, gosec, and nancy, the dependency vulnerability scan) on every branch and tag, next to upstream's
-`build.yml`, whose Go matrix the line keeps at the Go its `go` directive names (`GOTOOLCHAIN=local` there refuses an
-older one, and upstream's pinned golangci-lint cannot read a newer one's export data), while the orb's job runs the
-architect image's current Go. It is Giant Swarm CI only, never offered upstream, and never generated: the line's entry in
+`build.yml`, run as upstream has it (its Go matrix and golangci-lint version) with `giantswarm` added to its branches,
+while the orb's job runs the architect image's current Go. It is Giant Swarm CI only, never offered upstream, and never generated: the line's entry in
 giantswarm/github declares `gen.ci.generate: false`, so the file is edited here directly.
 
 nancy audits the modules of the built packages against OSS Index, by CVE id and module version. A finding with a
@@ -63,7 +62,7 @@ fixed version is a bump of that module in `go.mod` on the line, by hand (Renovat
 upstream for long. A finding without a fix is a time-boxed `.nancy-ignore` entry, `<id> until=<date> # <module>@<version>`
 with its tracking issue in a comment line, removed when the issue closes or the date passes; the scan is never
 bypassed, and no entry outlives its finding. GO-2026-5932 (`golang.org/x/crypto/openpgp`, unmaintained) is no entry:
-the carried patch took the package out of the line's imports, and nancy knows no such id. The line's x/crypto is
+upstream's v1.7.0 took the package out of the module's imports, and nancy knows no such id. The line's x/crypto is
 v0.58.0 (CVE-2026-56855, CVE-2026-78662 in `x/crypto/ssh`, fixed in v0.56.0), whose `go` directive sets the
 module's to 1.26.0: the Go a consumer of the line needs from the release carrying it on.
 
@@ -82,8 +81,7 @@ require github.com/giantswarm/go-selfupdate v1.6.1
 A `replace` never reaches `go install <module>@<version>` users, which ignores every `replace` of the installed
 module, and a library cannot pass one on to its importers. With the line under its own path, a library that imports it
 (selfupdate-cosign) carries it to every CLI transitively: the CLI's graph contains the line, and upstream's module only
-if something else requires it. The import goes back to upstream's path (then its v2, `…/go-selfupdate/v2`, where
-upstream plans the openpgp change) at the first upstream release that contains every carried patch, and this line
+if something else requires it. The import goes back to upstream's path at the first upstream release that contains every carried patch, and this line
 retires.
 
 ## Releases
@@ -104,7 +102,6 @@ Upstream's tags on the line (v1.6.0 and older) name upstream's module path and a
 
 | Patch | Why the CLIs need it | Upstream | State |
 |---|---|---|---|
-| `fix: replace unmaintained golang.org/x/crypto/openpgp with ProtonMail fork` | `validate.go` imports `golang.org/x/crypto/openpgp` unconditionally for `PGPValidator`, so every CLI that embeds the module reaches it (`selfupdate.init` → `openpgp.init`) and `govulncheck` reports GO-2026-5932 (unmaintained, unsafe by design, no fixed version) in each of them, although none verifies a PGP signature: they verify cosign bundles. The patch switches to `github.com/ProtonMail/go-crypto/openpgp`, the maintained drop-in fork the advisory recommends, with `cloudflare/circl` at v1.6.3. | [creativeprojects/go-selfupdate#58](https://github.com/creativeprojects/go-selfupdate/pull/58), open since 2026-07-24; the maintainer holds it for a v2 ([#57](https://github.com/creativeprojects/go-selfupdate/issues/57)) | carried, [giantswarm/go-selfupdate#1](https://github.com/giantswarm/go-selfupdate/pull/1) |
 | `fix: find GitHub releases when the release list comes back empty` | GitHub intermittently answers the release list `200 []`, so `DetectLatest` finds nothing and every CLI refuses to update; `GitHubSource.ListReleases` asks an empty list again and adds `/releases/latest`, which answers reliably. | to file — prepared in the fork: branch `upstream/github-empty-release-list` | carried, [giantswarm/go-selfupdate#20](https://github.com/giantswarm/go-selfupdate/issues/20) |
-| `fix: move go-github to v93` | The release lookup's errors are go-github types (`*github.RateLimitError`), which a CLI matches with `errors.As`; another major's type never matches, so a CLI on a newer go-github reads a spent rate limit as a network failure. v93 `NewClient` takes options and returns an error. | to file — prepared in the fork: branch `upstream/go-github-v93` | carried |
+| `fix: move go-github to v93` | The release lookup's errors are go-github types (`*github.RateLimitError`), which a CLI matches with `errors.As`; another major's type never matches, so a CLI on a newer go-github reads a spent rate limit as a network failure. v93 `NewClient` takes options and returns an error. | [creativeprojects/go-selfupdate#63](https://github.com/creativeprojects/go-selfupdate/pull/63), from branch `upstream/go-github-v93` | carried |
 | `chore: module path github.com/giantswarm/go-selfupdate` | Lets consumers import the line directly, so a library passes it on and `go install` users get it (a `replace` reaches neither). | never: Giant Swarm-specific | carried, see [Module path](#module-path) |
