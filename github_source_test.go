@@ -4,13 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v86/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,10 +102,9 @@ func fakeGitHubReleases(t *testing.T, lists []string, latestStatus int, latest s
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 
-	client := github.NewClient(nil)
-	baseURL, err := url.Parse(server.URL + "/")
+	baseURL := server.URL + "/"
+	client, err := github.NewClient(github.WithURLs(&baseURL, nil))
 	require.NoError(t, err)
-	client.BaseURL = baseURL
 	return &GitHubSource{api: client}, listed
 }
 
