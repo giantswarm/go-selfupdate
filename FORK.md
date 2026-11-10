@@ -19,7 +19,7 @@ the line's own issues live in this repository.
 
 ## Pin
 
-Upstream **v1.7.0** (`caf24d23`). The line moves to the next upstream release the CLIs take, with every
+Upstream **v1.7.1** (`5dd040ba`). The line moves to the next upstream release the CLIs take, with every
 carried patch kept in effect on it or dropped once upstream contains it.
 
 ## Changing the line
@@ -42,11 +42,8 @@ queued as a row on [giantswarm/giantswarm#37742](https://github.com/giantswarm/g
 decides what goes upstream and opens it; an agent never opens, comments on, reviews or closes anything on the
 upstream repository. The line's pipeline (below) checks the tree with `goimports -local
 github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own and every
-file in gofmt's form. The line therefore carries, as Giant Swarm-only formatting: the regrouped imports of `update.go`
-and `internal/path_test.go` (in the lines the module path commit rewrites anyway), gofmt's doc-comment form of
-`doc.go` and `update/doc.go`, and the sorted imports of `mockdata_test.go` and `validate_test.go` (upstream's
-openpgp change, creativeprojects/go-selfupdate#58, left them unsorted). The doc comments and the sorted imports are gofmt's output, offered upstream as [creativeprojects/go-selfupdate#62](https://github.com/creativeprojects/go-selfupdate/pull/62) from branch `upstream/gofmt`; a re-pin keeps upstream's
-version wherever upstream has formatted them.
+file in gofmt's form. The line therefore carries, as Giant Swarm-only formatting, the regrouped imports of `update.go`
+and `internal/path_test.go`, in the lines the module path commit rewrites anyway.
 
 ## CI
 
@@ -103,5 +100,4 @@ Upstream's tags on the line (v1.6.0 and older) name upstream's module path and a
 | Patch | Why the CLIs need it | Upstream | State |
 |---|---|---|---|
 | `fix: find GitHub releases when the release list comes back empty` | GitHub intermittently answers the release list `200 []`, so `DetectLatest` finds nothing and every CLI refuses to update; `GitHubSource.ListReleases` asks an empty list again and adds `/releases/latest`, which answers reliably. | to file — prepared in the fork: branch `upstream/github-empty-release-list` | carried, [giantswarm/go-selfupdate#20](https://github.com/giantswarm/go-selfupdate/issues/20) |
-| `fix: move go-github to v93` | The release lookup's errors are go-github types (`*github.RateLimitError`), which a CLI matches with `errors.As`; another major's type never matches, so a CLI on a newer go-github reads a spent rate limit as a network failure. v93 `NewClient` takes options and returns an error. | [creativeprojects/go-selfupdate#63](https://github.com/creativeprojects/go-selfupdate/pull/63), from branch `upstream/go-github-v93` | carried |
 | `chore: module path github.com/giantswarm/go-selfupdate` | Lets consumers import the line directly, so a library passes it on and `go install` users get it (a `replace` reaches neither). | never: Giant Swarm-specific | carried, see [Module path](#module-path) |
