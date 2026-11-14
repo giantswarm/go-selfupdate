@@ -38,9 +38,10 @@ The line's module path is `github.com/giantswarm/go-selfupdate`: the `module` li
 import name it. This is the one Giant Swarm-specific commit on the line (`chore: module path github.com/giantswarm/go-selfupdate`),
 never offered upstream. The upstream pull request of a carried patch stays what it was opened from: the patch commit
 alone, on upstream's module path; a change to it is cherry-picked onto upstream `main` as an `upstream/<slug>` branch on this repository,
-queued as a row on [giantswarm/giantswarm#37742](https://github.com/giantswarm/giantswarm/issues/37742), never taken from the line with the module path commit. A human
-decides what goes upstream and opens it; an agent never opens, comments on, reviews or closes anything on the
-upstream repository. The line's pipeline (below) checks the tree with `goimports -local
+never taken from the line with the module path commit. Until it is opened upstream, the patch's **Upstream** entry
+under [Carried patches](#carried-patches) reads "to file — prepared in the fork: branch `upstream/<slug>`". The
+maintainers review the prepared branches in batches, decide what goes upstream and open it; an agent never opens,
+comments on, reviews or closes anything on the upstream repository. The line's pipeline (below) checks the tree with `goimports -local
 github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own and every
 file in gofmt's form. The line therefore carries, as Giant Swarm-only formatting, the regrouped imports of `update.go`
 and `internal/path_test.go`, in the lines the module path commit rewrites anyway.
