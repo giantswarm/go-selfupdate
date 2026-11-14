@@ -25,10 +25,14 @@ carried patch kept in effect on it or dropped once upstream contains it.
 
 ## Moving the pin
 
-A pull request from `fork/v<version>` against `giantswarm` moves the pin: it merges the upstream tag into the line
-(`git merge --no-ff v<version>`), resolving conflicts so the carried patches stay in effect on the new upstream code,
-every import keeps this line's module path and the fork's own files stay as the line has them; upstream's tests and
-`go vet ./...` pass before it opens. It lands with a merge commit, so the new upstream tag is an ancestor of the line.
+A pull request from `fork/v<version>` against `giantswarm` moves the pin: it fetches upstream's tag into a ref of its own
+(`git fetch --no-tags https://github.com/creativeprojects/go-selfupdate.git refs/tags/v<version>:refs/upstream-tags/v<version>`)
+and merges that ref into the line (`git merge --no-ff refs/upstream-tags/v<version>`), resolving conflicts so the
+carried patches stay in effect on the new upstream code, every import keeps this line's module path and the fork's own
+files stay as the line has them; upstream's tests and `go vet ./...` pass before it opens. The line's own release tags
+continue upstream's numbers, so in a clone of the fork a plain `v<version>` can name the line's release instead of
+upstream's, and `--no-tags` keeps upstream's other tags out of the clone's `refs/tags`. It lands with a merge commit,
+so the new upstream tag is an ancestor of the line.
 The protected branch is never force-pushed.
 
 ## Module path
