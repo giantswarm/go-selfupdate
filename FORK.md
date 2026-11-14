@@ -13,8 +13,9 @@ the line's own issues live in this repository.
 
 | Branch | What it is |
 |---|---|
-| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, `.circleci/config.yml`, the generated `zz_generated.*` workflows, and upstream's `build.yml` running on this branch too). Every change is a pull request against it: a carried patch by rebase merge (below), the fork's own files by squash merge. |
+| `giantswarm` (default) | **The line**: the upstream release tag the CLIs run ("the pin") + the carried patches + this fork's own files (`FORK.md`, `fork/`, `renovate.json5`, `.circleci/config.yml`, the generated `zz_generated.*` workflows, and upstream's `build.yml` running on this branch too). Every change is a pull request against it: a carried patch by rebase merge, the fork's own files by squash merge ([Contributing](#contributing)). |
 | `main` | upstream `main` at the time of the fork; not consumed, not synced. |
+| `upstream/<slug>` | a carried patch prepared for upstream: its one commit on upstream `main`, on upstream's module path |
 | `fork/<topic>` | pull-request branches against `giantswarm` |
 
 ## Pin
@@ -22,26 +23,20 @@ the line's own issues live in this repository.
 Upstream **v1.7.1** (`5dd040ba`). The line moves to the next upstream release the CLIs take, with every
 carried patch kept in effect on it or dropped once upstream contains it.
 
-## Changing the line
-
-A carried patch lands by rebase merge: one upstream-ready commit, author and message kept, so the line's history is
-upstream's plus the patches and the patch is ready to go upstream as it is. The protected branch is never force-pushed.
+## Moving the pin
 
 A pull request from `fork/v<version>` against `giantswarm` moves the pin: it merges the upstream tag into the line
 (`git merge --no-ff v<version>`), resolving conflicts so the carried patches stay in effect on the new upstream code,
 every import keeps this line's module path and the fork's own files stay as the line has them; upstream's tests and
 `go vet ./...` pass before it opens. It lands with a merge commit, so the new upstream tag is an ancestor of the line.
+The protected branch is never force-pushed.
 
 ## Module path
 
 The line's module path is `github.com/giantswarm/go-selfupdate`: the `module` line in `go.mod` and every internal
 import name it. This is the one Giant Swarm-specific commit on the line (`chore: module path github.com/giantswarm/go-selfupdate`),
-never offered upstream. The upstream pull request of a carried patch stays what it was opened from: the patch commit
-alone, on upstream's module path; a change to it is cherry-picked onto upstream `main` as an `upstream/<slug>` branch on this repository,
-never taken from the line with the module path commit. Until it is opened upstream, the patch's **Upstream** entry
-under [Carried patches](#carried-patches) reads "to file — prepared in the fork: branch `upstream/<slug>`". The
-maintainers review the prepared branches in batches, decide what goes upstream and open it; an agent never opens,
-comments on, reviews or closes anything on the upstream repository. The line's pipeline (below) checks the tree with `goimports -local
+never offered upstream; its ledger file is [`fork/module-path.md`](fork/module-path.md). A carried patch goes upstream
+without it, on upstream's module path ([Contributing](#contributing)). The line's pipeline (below) checks the tree with `goimports -local
 github.com/giantswarm/go-selfupdate`, which wants the line's own packages in an import group of their own and every
 file in gofmt's form. The line therefore carries, as Giant Swarm-only formatting, the regrouped imports of `update.go`
 and `internal/path_test.go`, in the lines the module path commit rewrites anyway.
@@ -98,7 +93,49 @@ Upstream's tags on the line (v1.6.0 and older) name upstream's module path and a
 
 ## Carried patches
 
-| Patch | Why the CLIs need it | Upstream | State |
-|---|---|---|---|
-| `fix: find GitHub releases when the release list comes back empty` | GitHub intermittently answers the release list `200 []`, so `DetectLatest` finds nothing and every CLI refuses to update; `GitHubSource.ListReleases` asks an empty list again and adds `/releases/latest`, which answers reliably. | [creativeprojects/go-selfupdate#64](https://github.com/creativeprojects/go-selfupdate/issues/64) (issue); patch on branch `upstream/github-empty-release-list` | carried, [giantswarm/go-selfupdate#20](https://github.com/giantswarm/go-selfupdate/issues/20) |
-| `chore: module path github.com/giantswarm/go-selfupdate` | Lets consumers import the line directly, so a library passes it on and `go install` users get it (a `replace` reaches neither). | never: Giant Swarm-specific | carried, see [Module path](#module-path) |
+Each change the line carries has its own ledger file in [`fork/`](fork/); the directory listing is the set of carried
+changes, and a file's name is the change's stable key. A change adds or edits only its own file, never this one. On
+this line a carried patch is rebase-merged, its ledger file in a `docs(fork):` commit of its own next to the
+upstream-ready commit; the fork's own files are squash-merged. A ledger file has a title naming the change and:
+
+- **Status:** `carried`, or `dropped` once a re-pin onto an upstream release that contains it makes it redundant; a
+  Giant Swarm-specific change stays `carried` for as long as the line exists
+- **Upstream:** the upstream pull request or issue and its state; until a pull request is opened, "to file — prepared
+  in the fork: branch `upstream/<slug>`", with the upstream commit the branch is based on and the upstream search;
+  `never` for a Giant Swarm-specific change
+- **Our commit:** the commit on `giantswarm` and the pull request that landed it
+- `## Change`: what the change does
+- `## Reason`: why the line carries it
+
+## Contributing
+
+- **Upstream first, prepared here.** Before a change, search upstream's issues and pull requests, open and closed:
+  work upstream already has in flight is supported with our evidence, not duplicated. Every behavioural change is one
+  upstream-ready commit: upstream's conventions and tests (upstream's `CONTRIBUTING.md`), no fork references, its
+  message the upstream pull request's text and its subject conventional (`fix: …`), which upstream welcomes and Auto
+  Release reads. Its pull request against `giantswarm`, from a `fork/<topic>` branch, carries that commit and the
+  `docs(fork):` commit with its ledger file.
+- **Prepared on upstream's module path.** On the line the patch imports this line's module path; upstream's code
+  imports `github.com/creativeprojects/go-selfupdate`. The patch commit alone is cherry-picked onto upstream `main` as
+  an `upstream/<slug>` branch on this repository, never taken from the line with the [module path](#module-path)
+  commit: an import of the module's own packages goes back to upstream's path, and upstream's tests pass there. A
+  change to a prepared or opened patch takes the same way. The ledger file's **Upstream** reads "to file — prepared in
+  the fork: branch `upstream/<slug>`" until it is opened, and links the upstream pull request from then on.
+- **A human opens it upstream.** The maintainers review the prepared branches in batches, decide what is useful to
+  upstream and open it; the upstream pull request then names the fork commit. An agent never opens, comments on,
+  reviews or closes a pull request or issue on the upstream repository.
+- **Public only.** This repository is public: a ledger file, a commit message, a pull request and this file cite
+  public issues and pull requests only; where the reasoning lives in a private tracker it is written out in a sentence
+  instead. A pull request or commit message here names no upstream issue or pull request, so that nothing on this
+  fork shows up on upstream's timeline: the ledger file carries those links.
+- **Merging.** A carried patch is rebase-merged: its upstream-ready commit lands as it is, author and message kept, so
+  the line's history is upstream's plus the patches. A fork-only change (this file, `renovate.json5`,
+  `.circleci/config.yml`, a `go.mod` bump for a nancy finding) is squash-merged; a pin move lands with a merge commit
+  ([Moving the pin](#moving-the-pin)).
+- **Own tags.** Auto Release cuts the line's semver tags from the conventional subjects of what lands on `giantswarm`
+  ([Releases](#releases)): a carried patch's `fix:` or `feat:` cuts the next release candidate; a `docs(fork):` or
+  `chore:` change alone cuts none and ships with the next releasable commit.
+- **Own CI.** `.circleci/config.yml` is hand-written and edited here directly, Giant Swarm CI only, never offered
+  upstream ([CI](#ci)); a nancy finding is a bump or a time-boxed `.nancy-ignore` entry, never a bypassed scan.
+- **Renovate is off** (`renovate.json5`): upstream owns the dependency graph, and dependencies move when the line is
+  re-pinned, or by hand for a nancy finding.
